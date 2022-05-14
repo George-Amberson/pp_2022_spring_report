@@ -1,0 +1,631 @@
+\documentclass{report}
+
+\usepackage[warn]{mathtext}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{luainputenc}
+\usepackage[english, russian]{babel}
+\usepackage[pdftex]{hyperref}
+\usepackage{tempora}
+\usepackage[12pt]{extsizes}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{amsmath}
+
+\geometry{a4paper,top=2cm,bottom=2cm,left=2.5cm,right=1.5cm}
+\setlength{\parskip}{0.5cm}
+\setlist{nolistsep, itemsep=0.3cm,parsep=0pt}
+
+\usepackage{listings}
+\lstset{language=C++,
+        basicstyle=\footnotesize,
+		keywordstyle=\color{blue}\ttfamily,
+		stringstyle=\color{red}\ttfamily,
+		commentstyle=\color{green}\ttfamily,
+		morecomment=[l][\color{red}]{\#}, 
+		tabsize=4,
+		breaklines=true,
+  		breakatwhitespace=true,
+  		title=\lstname,       
+}
+
+\makeatletter
+\renewcommand\@biblabel[1]{#1.\hfil}
+\makeatother
+
+\begin{document}
+
+\begin{titlepage}
+
+\begin{center}
+Министерство науки и высшего образования Российской Федерации
+\end{center}
+
+\begin{center}
+Федеральное государственное автономное образовательное учреждение высшего образования \\
+Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского
+\end{center}
+
+\begin{center}
+Институт информационных технологий, математики и механики
+\end{center}
+
+\vspace{4em}
+
+\begin{center}
+\textbf{\LargeОтчет по лабораторной работе} \\
+\end{center}
+\begin{center}
+\textbf{\Large«Поразрядная сортировка для вещественных чисел (тип double) с простым слиянием.»} \\
+\end{center}
+
+\vspace{4em}
+
+\newbox{\lbox}
+\savebox{\lbox}{\hbox{text}}
+\newlength{\maxl}
+\setlength{\maxl}{\wd\lbox}
+\hfill\parbox{7cm}{
+\hspace*{5cm}\hspace*{-5cm}\textbf{Выполнил:} \\ студент группы 381906-2 \\ Кулемин П.А \\
+\\
+\hspace*{5cm}\hspace*{-5cm}\textbf{Проверил:}\\ доцент кафедры МОСТ, \\ кандидат технических наук \\ Сысоев А. В.\\
+}
+\vspace{\fill}
+
+\begin{center} Нижний Новгород \\ 2022 \end{center}
+
+\end{titlepage}
+
+\setcounter{page}{2}
+
+% Содержание
+\tableofcontents
+\newpage
+
+% Введение
+\section*{Введение}
+\addcontentsline{toc}{section}{Введение}
+\par Сортировка (упорядочивание) данных имеет очевидное практическоеприменение во многих областях (решение систем линейных урав-нений, упорядочивание графов, базы данных и др.) В данной лабораторной работе будет рассмотрена поразрядная сортировка вещественных чисел.Сортировка по основанию может применяться к данным, которые можно отсортировать лексикографически. Идея сортировки по основанию состоит в том, чтобы выполнять сортировку по цифрам, начиная с младшей значащей цифры и заканчивая самой значащей цифрой.
+\newpage
+
+% Постановка задачи
+\section*{Постановка задачи}
+\addcontentsline{toc}{section}{Постановка задачи}
+\par Данная цель предполагает решение следующих основных задач:
+\begin{enumerate}
+\itemРеализация последовательного и параллельных алгоритмов упорядочивания вещественных данных за линейное время. 
+\itemПроведение вычислительных экспериментов для сравнения времени работы алгоритмов с помощью Google C++ Testing Framework
+\itemСделать выводы об эффективности программы на основе полученных результатов эксперимента
+
+ 
+\end{enumerate}
+\par Параллельные алгоритмы должны быть реализованы при помощи технологий OpenMP, TBB.
+\newpage
+
+% Описание алгоритма
+\section*{Описание алгоритма}
+\addcontentsline{toc}{section}{Описание алгоритма}
+Входным параметром явлется вектор, элементы которого надо упорядочить. На выходе получаем вектор из упорядоченных элементов.\par
+Сравнение производится поразрядно: сначала сравниваются значения одного крайнего разряда, и элементы группируются по результатам этого сравнения, затем сравниваются значения следующего разряда, соседнего, и элементы либо упорядочиваются по результатам сравнения значений этого разряда внутри образованных на предыдущем проходе групп, либо переупорядочиваются в целом, но сохраняя относительный порядок, достигнутый при предыдущей сортировке. Затем аналогично делается для следующего разряда, и так до конца.
+
+\begin{enumerate}
+\item Инициализируем вектор списков значений элементов
+\item Во внешнем  цикле идем по байтам, во внутреннем - по всем элементам массива, вычисляем значение текущего байта текущего числа, после добавляем соответствующий элемент в список
+\item Пока списки не пусты, перезаписываем элементы масссива в том порядке, в котором они лежат в списках.
+ 
+\end{enumerate}
+\newpage
+
+% Описание схемы распараллеливания
+\section*{Описание схемы распараллеливания}
+\addcontentsline{toc}{section}{Описание схемы распараллеливания}
+\parДля распараллеливания алгоритма поразрядной сортировки необходимо разбить исходный массив на подмассивы, количесво которых равно количеству параллельно работающих процессов. Каждый поток сортирует свою часть с помощью поразрядной сортировки. \\
+Каждый поток обрабатывает массив таким же способом, как и в последовательной реализиции. После собираем массив из частей содержашихся в процессах.
+
+\par В OpenMP и TBB версиях распределение данных осуществляется автоматически. При выходе из параллельного региона кода во всех параллельных версиях используется автоматическая синхронизация.
+
+\newpage
+
+% Описание программной реализации
+\section*{Описание программной реализации}
+\addcontentsline{toc}{section}{Описание программной реализации}
+Программа состоит из заголовочного файла discharge\_double\_sort.h и двух файлов исходного кода  discharge\_double\_sort.cpp и main.cpp.
+\par В заголовочном файле находятся прототипы функций для последовательного и параллельных алгоритмов поразрядной сортировки
+\par Создание вектора \par
+\begin{lstlisting}
+double* create_random_vector(int size_n);
+\end{lstlisting}
+\par Реализация поразрядной сортировки:
+\begin{lstlisting}
+void discharge_sort(double* in, int size);
+  \end{lstlisting}
+
+\par Функция для параллельного алгоритма (OpenMP версия):
+\begin{lstlisting}
+void discharge_sort(vector* v);
+\end{lstlisting}
+\par Функция для параллельного алгоритма (TBB версия):
+\begin{lstlisting}
+void discharge_sort(vector* v);
+\end{lstlisting}
+\par Функция для слияния результатов обработки частей вектора:
+\begin{lstlisting}
+void union_from_lists(std::list<double> *lists, vector*v)
+\end{lstlisting}
+
+\par В файле исходного кода discharge\_double\_sort.cpp содержится реализация функций, объявленных в заголовочном файле. В файле исходного кода main.cpp содержатся тесты для проверки корректности программы.
+\newpage
+
+% Подтверждение корректности
+\section*{Подтверждение корректности}
+Для подтверждения в программе представлен набор тестов, разработанных с помощью использования Google C++ Testing Framework. Тесты проверяют корректность работы алгоритмов, реализованных в программе. При помощи последовательного алгоритма и рассматриваемого параллельного алгоритма подсчитывается время работы обоих алгоритмов, находится ускорение и затем результаты вычисления  последовательным и параллельным способом сравниваются между собой.
+\par Успешное прохождение всех тестов подтверждает корректность работы всей программы.
+\newpage
+
+% Результаты экспериментов
+\section*{Результаты экспериментов}
+\addcontentsline{toc}{section}{Результаты экспериментов}
+Вычислительные эксперименты для оценки эффективности работы параллельного алгоритма проводились на ПК со следующими характеристиками:
+\begin{itemize}
+\item Процессор:Intel(R) Core(TM) i5-7300HQ 2.5GHz, количество ядер: 4; логических процессов:4;
+\item Оперативная память: 32 ГБ
+\item Операционная система: Windows 10 Home.
+\end{itemize}
+\par Количество используемых потоков определялось автоматически.
+\begin{table}[!h]
+\caption{Результаты вычислительных экспериментов. Сравнение последовательного алгоритма с TBB}
+\centering
+\begin{tabular}{|p{4cm}|p{4cm}|p{3cm}|}
+\hline
+Последовательный алгоритм,сек & Параллельный алгоритм,сек & Ускорение  \\\hline
+0.343664 & 0.180281 & 2.38944  \\\hline
+0.343664 &  0.0839319 & 2.44  \\\hline
+0.267033 &  0.0889498 & 3.00206  \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[!h]
+\caption{Результаты вычислительных экспериментов. Сравнение последовательного алгоритма с OpenMP}
+\centering
+\begin{tabular}{|p{4cm}|p{4cm}|p{4cm}|p{3cm}|}
+\hline
+Последовательный алгоритм,сек & Параллельный алгоритм,сек & Ускорение  \\\hline
+0.157741 &  0.149563 & 1.05468  \\\hline
+0.135773 & 101828 & 1.33336  \\\hline
+0.320587 & 0.192277 & 1.66732  \\
+\hline
+\end{tabular}
+\end{table}
+
+\newpage
+
+% Выводы из результатов экспериментов
+\section*{Выводы из результатов экспериментов}
+\addcontentsline{toc}{section}{Выводы из результатов экспериментов}
+\par На основе полученных данных можно сделать вывод, что параллельный алгоритм работает быстрее, чем последовательный. Однако, разница по времени между алгоритмами не сильно высока\\
+Это объясняется разделением сортировки данных между потоками. Кроме того, можно отметить разницу в ускорениях между tbb и Open MP. Это можно обьяснить разницей в подходах к распараллеливанию tbb и Open MP.
+
+\newpage
+
+\newpage
+
+% Заключение
+\section*{Заключение}
+\addcontentsline{toc}{section}{Заключение}
+В результате выполнения   данной лабораторной работы были разработаны последовательный и параллельныe алгоритмы поразрядной сортировки вещественных чисел. Параллельное умножение реализовано при помощи технологий OpenMP и TBB. Проведенные тесты показали корректность реализованных алгоритмов, а проведенные эксперименты доказали, что параллельная версия алгоритма работает быстрее.
+
+\newpage
+
+% Литература
+\section*{Литература}
+\addcontentsline{toc}{section}{Литература}
+\begin{enumerate}
+\item Поразрядная сортировка [Электронный ресурс] // URL: \url{http://algolist.ru/sort/radix_sort.php/}
+\item Гергель В. П. Теория и практика параллельных вычислений. – 2007.
+\item  Гергель В. П., Стронгин Р. Г. Основы параллельных вычислений для много-
+процессорных вычислительных систем. – 2003.
+\end{enumerate} 
+\newpage
+
+% Приложение
+\section*{Приложение}
+\addcontentsline{toc}{section}{Приложение}
+\textbf{Последовательная версия}
+\newline
+\newline discharge\_double\_sort.h
+\begin{lstlisting}
+/// Copyright 2022 George Amberson
+#ifndef MODULES_TASK_1_KULEMIN_P_DISCHARGE_DOUBLE_SORT_DISCHARGE_DOUBLE_SORT_H_
+#define MODULES_TASK_1_KULEMIN_P_DISCHARGE_DOUBLE_SORT_DISCHARGE_DOUBLE_SORT_H_
+#include <vector>
+#include <list>
+double* create_random_vector(int size_n);
+void union_from_lists(const std::vector<std::list<double>>* lists, double* in);
+void discharge_sort(double* in, int size);
+bool check_vectors(double* st, double* sd, int size);
+void copy_vectors(double* st, double* sd, int size);
+#endif  // MODULES_TASK_1_KULEMIN_P_DISCHARGE_DOUBLE_SORT_DISCHARGE_DOUBLE_SORT_H_
+\end{lstlisting}
+main.cpp
+\begin{lstlisting}
+// Copyright 2018 Nesterov Alexander
+#include <gtest/gtest.h>
+#include <vector>
+#include "../kulemin_p_discharge_double_sort/discharge_double_sort.h"
+
+TEST(Sequential, Test_Arr_10) {
+    const int count = 10;
+    double* st = create_random_vector(count);
+    double* sd = new double[count];
+    copy_vectors(st, sd, count);
+    discharge_sort(st, count);
+    std::sort(sd, sd + count);
+    bool res = check_vectors(st, sd, count);
+    delete[] st;
+    delete[] sd;
+    ASSERT_EQ(true, res);
+}
+
+TEST(Sequential, Test_Arr_20) {
+    const int count = 20;
+    double* st = create_random_vector(count);
+    double* sd = new double[count];
+    copy_vectors(st, sd, count);
+    discharge_sort(st, count);
+    std::sort(sd, sd + count);
+    bool res = check_vectors(st, sd, count);
+    delete[] st;
+    delete[] sd;
+    ASSERT_EQ(true, res);
+}
+
+TEST(Sequential, Test_Arr_50) {
+    const int count = 50;
+    double* st = create_random_vector(count);
+    double* sd = new double[count];
+    copy_vectors(st, sd, count);
+    discharge_sort(st, count);
+    std::sort(sd, sd + count);
+    bool res = check_vectors(st, sd, count);
+    delete[] st;
+    delete[] sd;
+    ASSERT_EQ(true, res);
+}
+
+TEST(Sequential, Test_Arr_100) {
+    const int count = 100;
+    double* st = create_random_vector(count);
+    double* sd = new double[count];
+    copy_vectors(st, sd, count);
+    discharge_sort(st, count);
+    std::sort(sd, sd + count);
+    bool res = check_vectors(st, sd, count);
+    delete[] st;
+    delete[] sd;
+    ASSERT_EQ(true, res);
+}
+
+TEST(Sequential, Test_Arr_150) {
+    const int count = 150;
+    double* st = create_random_vector(count);
+    double* sd = new double[count];
+    copy_vectors(st, sd, count);
+    discharge_sort(st, count);
+    std::sort(sd, sd + count);
+    bool res = check_vectors(st, sd, count);
+    delete[] st;
+    delete[] sd;
+    ASSERT_EQ(true, res);
+}
+
+\end{lstlisting}
+
+\textbf{OpenMP версия}
+\newline
+\newline \newline discharge\_double\_sort.h
+\begin{lstlisting}
+// Copyright 2022 George Amberson
+#ifndef MODULES_TASK_2_KULEMIN_P_DISCHARGE_DOUBLE_SORT_OMP_KULEMIN_P_DISCHARGE_DOUBLE_SORT_OMP_H_
+#define MODULES_TASK_2_KULEMIN_P_DISCHARGE_DOUBLE_SORT_OMP_KULEMIN_P_DISCHARGE_DOUBLE_SORT_OMP_H_
+#include <vector>
+#include <list>
+struct vector {
+    double* ptr;
+    int last_el;
+    int size;
+    vector() {
+        ptr = nullptr;
+        last_el = 0;
+        size = 0;
+    }
+    explicit vector(int _size) {
+        ptr = new double[_size];
+        size = _size;
+        last_el = 0;
+    }
+    vector(const vector& in) {
+        this->ptr = new double[in.size];
+        this->size = in.size;
+        this->last_el = in.last_el;
+        for (int i = 0; i < in.size; i++)this->ptr[i] = in.ptr[i];
+    }
+    ~vector() {
+        delete[] ptr;
+    }
+    vector& operator= (const vector& in) {
+        if (this != &in) {
+            this->ptr = new double[in.size];
+            this->size = in.size;
+            this->last_el = in.last_el;
+            for (int i = 0; i < in.size; i++)this->ptr[i] = in.ptr[i];
+        }
+        return (*this);
+    }
+};
+vector* create_random_vector(int size_n);
+void union_from_lists(std::list<double>* lists, vector* v);
+void discharge_sort(vector* v);
+bool check_vectors(double* st, double* sd, int size);
+void copy_vectors(double* st, double* sd, int size);
+#endif  // MODULES_TASK_2_KULEMIN_P_DISCHARGE_DOUBLE_SORT_OMP_KULEMIN_P_DISCHARGE_DOUBLE_SORT_OMP_H_
+\end{lstlisting}
+main.cpp
+\begin{lstlisting}
+// Copyright 2018 Nesterov Alexander
+#include <gtest/gtest.h>
+#include <vector>
+#include "./kulemin_p_discharge_double_sort_omp.h"
+
+TEST(Parallel_Operations_OpenMP, Test_No_Throw) {
+    vector* vb;
+    vb = create_random_vector(10);
+    ASSERT_NO_THROW(discharge_sort(vb));
+}
+
+TEST(Parallel_Operations_OpenMP, Test_10) {
+    int count = 10;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+
+
+TEST(Parallel_Operations_OpenMP, Test_100) {
+    int count = 100;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+TEST(Parallel_Operations_OpenMP, Test_150) {
+    int count = 150;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+TEST(Parallel_Operations_OpenMP, Test_200) {
+    int count = 200;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
+\end{lstlisting}
+
+\textbf{TBB версия}
+\newline
+\newline discharge\_double\_sort.h
+\begin{lstlisting}
+// Copyright 2022 George Amberson
+#ifndef MODULES_TASK_3_KULEMIN_P_DISCHARGE_DOUBLE_SORT_TBB_KULEMIN_P_DISCHARGE_DOUBLE_SORT_TBB_H_
+#define MODULES_TASK_3_KULEMIN_P_DISCHARGE_DOUBLE_SORT_TBB_KULEMIN_P_DISCHARGE_DOUBLE_SORT_TBB_H_
+
+#include <vector>
+#include <string>
+#include <list>
+struct vector {
+    double* ptr;
+    int last_el;
+    int size;
+    vector() {
+        ptr = nullptr;
+        last_el = 0;
+        size = 0;
+    }
+    explicit vector(int _size) {
+        ptr = new double[_size];
+        size = _size;
+        last_el = 0;
+    }
+    vector(const vector& in) {
+        this->ptr = new double[in.size];
+        this->size = in.size;
+        this->last_el = in.last_el;
+        for (int i = 0; i < in.size; i++)this->ptr[i] = in.ptr[i];
+    }
+    ~vector() {
+        delete[] ptr;
+    }
+    vector& operator= (const vector& in) {
+        if (this != &in) {
+            this->ptr = new double[in.size];
+            this->size = in.size;
+            this->last_el = in.last_el;
+            for (int i = 0; i < in.size; i++)this->ptr[i] = in.ptr[i];
+        }
+        return (*this);
+    }
+};
+vector* create_random_vector(int size_n);
+void union_from_lists(std::list<double>* lists, vector* v);
+void discharge_sort(vector* v);
+bool check_vectors(double* st, double* sd, int size);
+void copy_vectors(double* st, double* sd, int size);
+
+#endif  // MODULES_TASK_3_KULEMIN_P_DISCHARGE_DOUBLE_SORT_TBB_KULEMIN_P_DISCHARGE_DOUBLE_SORT_TBB_H_
+\end{lstlisting}
+matrix\_mult.cpp
+\begin{lstlisting}
+// Copyright 2018 Nesterov Alexander
+#include <tbb/tbb.h>
+#include <vector>
+#include <string>
+#include <random>
+#include <functional>
+#include <numeric>
+#include <iostream>
+#include "../../../modules/task_3/kulemin_p_discharge_double_sort_tbb/kulemin_p_discharge_double_sort_tbb.h"
+
+vector* create_random_vector(int size_n) {
+    std::random_device dev;
+    std::mt19937 gen(dev());
+    vector* in = new vector(size_n);
+    for (int i = 0; i < size_n; ++i) {
+        in->ptr[i] = static_cast<double>(gen()) / gen();
+    }
+    return in;
+}
+
+struct DischargeSort {
+    vector* arr;
+    size_t byte;
+    std::vector<std::list<double>> lists;
+    explicit DischargeSort(vector* ta, size_t _b): arr(ta), byte(_b) {
+        lists.resize(256);
+    }
+    DischargeSort(DischargeSort&s, tbb::split) : arr(s.arr), byte(s.byte) {
+        lists.resize(256);
+    }
+    void operator()(const tbb::blocked_range<int>& r) {
+        int end = r.end();
+        int begin = r.begin();
+        for (int i = begin; i < end; i++) {
+            unsigned char* pt = (unsigned char*)(arr->ptr + i);
+            lists[*(pt + byte)].push_back(arr->ptr[i]);
+        }
+    }
+    void join(const DischargeSort& s) {
+        for (int i = 0; i < 256; i++) {
+            for (auto j = s.lists[i].begin(); j != s.lists[i].end(); j++) {
+                lists[i].push_back(*j);
+            }
+        }
+    }
+};
+void discharge_sort(vector* v) {
+    for (size_t j = 0; j < sizeof(double); j++) {
+        v->last_el = 0;
+        DischargeSort s(v, j);
+        tbb::parallel_reduce(tbb::blocked_range<int>(0, v->size, 4), s);
+        for (auto i : s.lists) {
+            while (!i.empty()) {
+                v->ptr[v->last_el] = i.front();
+                i.pop_front();
+                v->last_el++;
+            }
+        }
+    }
+}
+
+bool check_vectors(double* st, double* sd, int size) {
+    bool res = true;
+    for (int i = 0; i < size; i++) {
+        if (st[i] != sd[i]) {
+            res = false;
+            break;
+        }
+    }
+    return res;
+}
+void copy_vectors(double* st, double* sd, int size) {
+    for (int i = 0; i < size; i++) {
+        sd[i] = st[i];
+    }
+}
+\end{lstlisting}
+main.cpp
+\begin{lstlisting}
+    // Copyright 2018 Nesterov Alexander
+#include <gtest/gtest.h>
+#include <vector>
+#include "./kulemin_p_discharge_double_sort_tbb.h"
+
+TEST(Parallel_Operations_OpenMP, Test_No_Throw) {
+    vector* vb;
+    vb = create_random_vector(10);
+    ASSERT_NO_THROW(discharge_sort(vb));
+}
+
+TEST(Parallel_Operations_OpenMP, Test_10) {
+    int count = 10;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+
+
+TEST(Parallel_Operations_OpenMP, Test_100) {
+    int count = 100;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+TEST(Parallel_Operations_OpenMP, Test_150) {
+    int count = 150;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+TEST(Parallel_Operations_OpenMP, Test_200) {
+    int count = 200;
+    vector* vb = create_random_vector(count);
+    vector* sd = new vector(count);
+    copy_vectors(vb->ptr, sd->ptr, count);
+    std::sort(vb->ptr, vb->ptr + count);
+    discharge_sort(sd);
+    bool res = check_vectors(vb->ptr, sd->ptr, count);
+    ASSERT_EQ(true, res);
+}
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+\end{lstlisting}
+
+\end{document}
